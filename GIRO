@@ -1,0 +1,45 @@
+@onready var camera = $".."
+
+# Sensibilidade de rotação
+@export var rotation_sensitivity: float = 0.05
+
+# Variáveis para armazenar a posição anterior do toque e o ID do toque ativo
+var last_touch_position = Vector2.ZERO
+var active_touch_id: int = -1
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			if active_touch_id == -1:
+				# Nenhum toque ativo, iniciar rotação com este toque
+				active_touch_id = event.index
+				last_touch_position = event.position
+			else:
+				# Outro toque detectado enquanto já há um toque ativo, cancelar rotação
+				active_touch_id = -1
+		else:
+			if event.index == active_touch_id:
+				# Toque ativo liberado, cancelar rotação
+				active_touch_id = -1
+
+	elif event is InputEventScreenDrag:
+		if event.index == active_touch_id:
+			var current_position = event.position
+			var delta = current_position - last_touch_position
+
+			# Atualiza a rotação da câmera com base no movimento do dedo
+			rotate_camera(delta)
+
+			# Atualiza a posição do toque para a próxima iteração
+			last_touch_position = current_position
+
+func rotate_camera(delta: Vector2) -> void:
+	if active_touch_id != -1:
+		# Rotação horizontal (em torno do eixo Y)
+		camera.rotation_degrees.y -= delta.x * rotation_sensitivity
+
+		# Rotação vertical (em torno do eixo X), ajustada para não inverter
+		var new_rotation_x = camera.rotation_degrees.x - delta.y * rotation_sensitivity
+		new_rotation_x = clamp(new_rotation_x, -45, 45)  # Limita a rotação entre -45 e 45 graus
+
+		camera.rotation_degrees.x = new_rotation_x

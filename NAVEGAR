@@ -1,0 +1,47 @@
+@onready var camera = $"."
+
+# Sensibilidade para movimentos nos eixos
+@export var move_sensitivity: float = 0.01
+@export var depth_sensitivity: float = 0.01
+
+# Variáveis para armazenar o estado do toque e posição inicial para gestos
+var initial_distance = 0.0
+var initial_pan_position = Vector2.ZERO
+var touch_positions := {}
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			touch_positions[event.index] = event.position
+			if touch_positions.size() == 2:
+				# Define a distância inicial e a posição inicial para o pan
+				var positions = touch_positions.values()
+				initial_distance = positions[0].distance_to(positions[1])
+				initial_pan_position = (positions[0] + positions[1]) / 2.0
+		else:
+			touch_positions.erase(event.index)
+	
+	elif event is InputEventScreenDrag:
+		touch_positions[event.index] = event.position
+
+		if touch_positions.size() == 2:
+			# Com dois dedos, calculamos o movimento de zoom e pan
+			var positions = touch_positions.values()
+			var touch_1 = positions[0]
+			var touch_2 = positions[1]
+			var current_distance = touch_1.distance_to(touch_2)
+			var current_pan_position = (touch_1 + touch_2) / 2.0  # Posição média dos dois dedos
+
+			# Calcula o fator de zoom com base na variação da distância entre os dedos
+			var zoom_factor = (initial_distance - current_distance) * depth_sensitivity
+			camera.translate_object_local(Vector3(0, 0, zoom_factor))
+
+			# Calcula o movimento de pan com base na variação da posição média dos dedos
+			var pan_delta = current_pan_position - initial_pan_position
+			var pan_vector = -pan_delta.x * move_sensitivity * Vector3.RIGHT \
+							 + pan_delta.y * move_sensitivity * Vector3.UP
+			camera.translate_object_local(pan_vector)
+
+			# Atualiza as variáveis iniciais para o próximo cálculo de pan e zoom
+			initial_distance = current_distance
+			initial_pan_position = current_pan_position
